@@ -1,0 +1,2365 @@
+timer = 90
+killTime = 20
+multiplier = 2
+local playersNeeded = 4
+--local modes = {"Classic", "One In The Chamber"}
+--local help = {"Regular murder.", "Last man standing wins but you only have one bullet."}
+local modes = {"Classic", "Murder Madness", "Cold Killer", "Sheriff Showdown", "Juggernaut", "Double Trouble", "Sticks and Stones", "Infected", "One In The Chamber"}
+local help = {"Regular murder.", "Everyone's a Murderer, last man standing wins!", "Touch frozen players to un-freeze them from the Murderer's curse.", "Everyone's a Sheriff, last man standing wins!", "Team up and kill the Murderer!", "Two Murderers and two Sheriffs.", "Murderers VS Sheriffs.", "Survive the Infected and don't let them Infect you!", "Last man standing wins but you only have one bullet. A kill gives 1 bullet."}
+local maps = game.ServerStorage.Maps:GetChildren()
+local currentMap = nil
+
+local PointsService = Game:GetService("PointsService")
+local freeRadio = {"tails807", "sonic231", "DarkEtherz", "Superluigi101CP", "Oaktin", "CanadianMurderer, osuka"} 
+
+function makeReaper(player)
+	if player ~= nil then
+		if player.Character ~= nil then
+			if player.Character:findFirstChild("Humanoid") then
+				if player:findFirstChild("PlayerGui") ~= nil then
+					if player.PlayerGui:findFirstChild("GUI") ~= nil then
+						if player.PlayerGui.GUI:findFirstChild("Reaper") ~= nil then
+						player.PlayerGui.GUI:findFirstChild("Reaper").Visible = true
+						end	
+					end 
+				end
+				local p = player.Character:GetChildren()
+				for i = 1, #p do
+					if p[i] ~= nil then
+						if p[i].Parent ~= nil then
+							if p[i].className == "Part" then 
+								p[i].BrickColor = BrickColor.new("Really black")
+								p[i].Transparency = 0
+							end
+							if p[i].className == "Hat" or p[i].className == "Shirt" or p[i].className == "Pants" or p[i].className == "CharacterMesh" then
+								p[i].Parent = nil	
+							end
+						end
+					end
+				end
+			game.ServerStorage.Tools.ReaperHat:clone().Parent = player.Character
+			game.ServerStorage.Tools.ReaperCape:clone().Parent = player.Character
+			if player.Character:findFirstChild("Body Colors") ~= nil then
+			player.Character:findFirstChild("Body Colors").Parent = nil
+			game.ServerStorage.Tools.ReaperColors:clone().Parent = player.Character	
+			end
+			end
+		end
+	end
+end
+
+function checkRadio(player)
+	if player ~= nil then
+		for x = 1, #freeRadio do
+			if freeRadio[x] == player.Name then
+				return true
+			end
+		end
+	end
+	return false
+end
+
+function findTable(tab, name)
+	for i = 1, #tab do
+		if tab[i].Name == name then
+			return tab[i]
+		end
+	end
+	return nil
+end
+function roundResults(winner, credits)
+	local r = game.Players:GetChildren()
+	credits = (credits + credits*0.25) --- DOUBLE
+	local ccredits = credits
+	local inno = {}
+		for i = 1, #r do
+			if r[i] ~= nil then
+				if r[i].Character ~= nil then
+					if r[i].Character:findFirstChild("Role") then
+						if winner == "Innocent" then
+							if r[i].Character:findFirstChild("Role").Value == "Innocent" or r[i].Character:findFirstChild("Role").Value == "Sheriff" then
+							table.insert(inno, r[i])	
+							end
+						elseif winner == "Murderer" then
+							if r[i].Character:findFirstChild("Role").Value == "Murderer" then
+							table.insert(inno, r[i])	
+							end							
+						else
+							if r[i] == winner then
+							table.insert(inno, r[i])	
+							end									
+						end		
+					end
+				end
+			end
+		end		
+		coroutine.resume(coroutine.create(function()
+		wait(10)	
+		for i = 1, #r do
+			if r[i] ~= nil then
+				local dataKey = r[i]:findFirstChild("DataString") 
+				if dataKey ~= nil then
+				local data = game.ServerStorage.PlayerDataService:findFirstChild(dataKey.Value)	
+					if Game:GetService("GamePassService"):PlayerHasPass(r[i], 182499700) or r[i].Name == "XxgalexywolfxX" then
+						ccredits = math.floor(ccredits + credits*0.5)
+					else
+						ccredits = math.floor(credits)
+					end
+				if r[i]:findFirstChild("PlayerGui") then
+					if r[i].PlayerGui:findFirstChild("GUI") then
+						if r[i].PlayerGui.GUI:findFirstChild("RoundEnd") then
+						local re = r[i].PlayerGui.GUI:findFirstChild("RoundEnd")
+						if re:findFirstChild("Win") ~= nil then	
+						re.Visible = true	
+						if winner == "Innocent" then
+							--if r[i].Character:findFirstChild("Role") then
+								if findTable(inno, r[i].Name) ~= nil then
+								re.Win.Text = "YOU WIN!"
+								re.Win.TextColor3 = Color3.new(85/255, 255/255, 127/255)
+								re.Reward1.Text = "+" .. ccredits .. " CREDITS"
+								--re.Reward2.Text = "+" .. credits*2 .. " XP | " .. 1000 - (math.abs((math.floor(data.XP.Value/1000)*1000)-(data.XP.Value))) .. " XP to next rank." 
+									if data then
+									data.V.Value = true	
+									data.XP.Value = data.XP.Value + ccredits	* 2
+									data.RealCredits.Value = data.RealCredits.Value + ccredits
+									data.Credits.Value = data.Credits.Value + ccredits	
+									
+									re.Reward2.Text = "+" .. ccredits*2 .. " XP | " .. 1000 - (math.abs((math.floor(data.XP.Value/1000)*1000)-(data.XP.Value))) .. " XP to next rank."
+									end
+									if PointsService:GetAwardablePoints() > 10 then
+										pcall(function()
+										PointsService:AwardPoints(r[i].userId, 10*multiplier)
+										end)									
+									end									
+								else
+								re.Win.Text = "YOU LOST!"
+								re.Win.TextColor3 = Color3.new(255/255, 0, 0)
+								re.Reward1.Text = "+0 CREDITS"
+									if data then
+									re.Reward2.Text = "+0 XP | " .. 1000 - (math.abs((math.floor(data.XP.Value/1000)*1000)-(data.XP.Value))) .. " XP to next rank."
+									end
+								end
+							--end
+						elseif winner == "Murderer" then
+							--if r[i].Character:findFirstChild("Role") then
+								if findTable(inno, r[i].Name) ~= nil then								
+								re.Win.Text = "YOU WIN!"
+								re.Win.TextColor3 = Color3.new(85/255, 255/255, 127/255)
+								re.Reward1.Text = "+" .. ccredits .. " CREDITS"
+								--re.Reward2.Text = "+" .. credits*2 .. " XP | " .. 1000 - (math.abs((math.floor(data.XP.Value/1000)*1000)-(data.XP.Value))) .. " XP to next rank."
+									if data then
+									data.V.Value = true	
+									data.XP.Value = data.XP.Value + ccredits	* 2
+									data.RealCredits.Value = data.RealCredits.Value + ccredits
+									data.Credits.Value = data.Credits.Value + ccredits	
+									
+									re.Reward2.Text = "+" .. ccredits*2 .. " XP | " .. 1000 - (math.abs((math.floor(data.XP.Value/1000)*1000)-(data.XP.Value))) .. " XP to next rank."
+									end
+									if PointsService:GetAwardablePoints() > 50 then
+										pcall(function()
+										PointsService:AwardPoints(r[i].userId, 50*multiplier)
+										end)									
+									end										
+								else
+								re.Win.Text = "YOU LOST!"
+								re.Win.TextColor3 = Color3.new(255/255, 0, 0)
+								re.Reward1.Text = "+0 CREDITS"
+									if data then
+									re.Reward2.Text = "+0 XP | " .. 1000 - (math.abs((math.floor(data.XP.Value/1000)*1000)-(data.XP.Value))) .. " XP to next rank."
+									end
+								end
+							--end							
+						else
+							
+								local win = game.Players:FindFirstChild(winner.Name)
+									if win ~= nil then
+										if findTable(inno, r[i].Name) ~= nil then											
+											re.Win.Text = "YOU WIN!"
+											re.Win.TextColor3 = Color3.new(85/255, 255/255, 127/255)
+											re.Reward1.Text = "+" .. ccredits .. " CREDITS"
+											--re.Reward2.Text = "+" .. credits*2 .. " XP | " .. 1000 - (math.abs((math.floor(data.XP.Value/1000)*1000)-(data.XP.Value))) .. " XP to next rank."
+												if data then
+												data.V.Value = true	
+												data.XP.Value = data.XP.Value + ccredits	* 2
+												data.RealCredits.Value = data.RealCredits.Value + ccredits
+												data.Credits.Value = data.Credits.Value + ccredits	
+												
+												re.Reward2.Text = "+" .. ccredits*2 .. " XP | " .. 1000 - (math.abs((math.floor(data.XP.Value/1000)*1000)-(data.XP.Value))) .. " XP to next rank."
+												end
+											if PointsService:GetAwardablePoints() > 50 then
+												pcall(function()
+												PointsService:AwardPoints(win.userId, 50*multiplier)
+												end)									
+											end													
+											else
+											re.Win.Text = "YOU LOST!"
+											re.Win.TextColor3 = Color3.new(255/255, 0, 0)
+											re.Reward1.Text = "+0 CREDITS"
+											if data then
+											re.Reward2.Text = "+0 XP | " .. 1000 - (math.abs((math.floor(data.XP.Value/1000)*1000)-(data.XP.Value))) .. " XP to next rank."
+											end
+										end
+								end	
+							end
+						end
+						end					
+					end
+				end
+				end			
+			end		
+		end
+	wait(5)
+		for i = 1, #r do
+			if r[i] ~= nil then
+				if r[i]:findFirstChild("PlayerGui") then
+					if r[i].PlayerGui:findFirstChild("GUI") then
+						if r[i].PlayerGui.GUI:findFirstChild("RoundEnd") then
+						local re = r[i].PlayerGui.GUI:findFirstChild("RoundEnd")		
+						re.Visible = false
+						end
+					end
+				end
+			end
+		end
+		end))								
+end
+
+function updateTime(text)
+	local r = game.Players:GetChildren()
+	for i = 1, #r do
+		if r[i] ~= nil then
+			if r[i]:findFirstChild("PlayerGui") then
+				if r[i].PlayerGui:findFirstChild("GUI") then
+					if r[i].PlayerGui.GUI:findFirstChild("Timer") then	
+					r[i].PlayerGui.GUI.Timer.Text = text
+					end	
+				end
+			end
+		end
+	end
+end
+
+function stopAllSound()
+	local p = game.Players:GetChildren()
+		for i = 1, #p do
+			if p[i] ~= nil then
+				if p[i].PlayerGui ~= nil then
+					local sounds = p[i].PlayerGui:findFirstChild("Sounds")
+					local s = sounds:GetChildren()
+					for x = 1, #s do
+						if s[x] ~= nil then
+							if s[x].className == "Sound" then
+							s[x]:Stop()
+							end
+						end
+					end						
+				
+				end
+			end
+		end	
+end
+
+function playSound(plr, sound)
+	if plr == "All" and workspace:findFirstChild("Music") == nil then
+		local p = game.Players:GetChildren()
+		if sound == "Win" or sound == "Lose" then
+			if sound == "Win" then
+				sound = "Win".. math.random(1,38)
+			end
+			if sound == "Lose" then
+				sound = "Lose".. math.random(1,28)		
+			end	
+				if game.ServerStorage:FindFirstChild("Music") ~= nil then
+					if  game.ServerStorage.Music:findFirstChild(sound) ~= nil then
+					local newSound = game.ServerStorage.Music:findFirstChild(sound):clone()
+					newSound.Parent = workspace
+					newSound:Play()
+					wait()
+					newSound:Play()
+					game:GetService("Debris"):AddItem(newSound, 30)
+					end
+				end					
+		else	
+			for i = 1, #p do
+				if p[i] ~= nil then
+					if p[i].PlayerGui ~= nil then
+						sounds = p[i].PlayerGui:findFirstChild("Sounds")	
+							if sounds then							
+							sounds:findFirstChild(sound):Play()
+							end							
+					
+					end
+				end
+			end
+		end						
+	else
+		local p = game.Players:findFirstChild(plr)
+			if p ~= nil then
+				if p.PlayerGui ~= nil then
+					local sounds = p.PlayerGui:findFirstChild("Sounds")
+					if sounds then
+					sounds:findFirstChild(sound):Play()	
+					end
+				end
+			end
+		end			
+end
+
+function pMsg(text, t, plr, color)
+	if plr ~= nil then
+		if plr:findFirstChild("PlayerGui") then
+			if plr.PlayerGui:findFirstChild("GUI") then
+				if plr.PlayerGui.GUI:findFirstChild("Message") then
+					if color == "Red" then
+					plr.PlayerGui.GUI.Message.TextColor3 = Color3.new(255/255, 0, 0)	
+					elseif color == "Green" then
+					plr.PlayerGui.GUI.Message.TextColor3 = Color3.new(85/255, 255/255, 0)
+					elseif color == "Orange" then
+					plr.PlayerGui.GUI.Message.TextColor3 = Color3.new(255/255, 170/255, 0)						
+					else
+					plr.PlayerGui.GUI.Message.TextColor3 = Color3.new(255/255, 255/255, 255/255)			
+					end
+				plr.PlayerGui.GUI.Message.Text = text	
+				end
+			end
+		end
+	end
+	coroutine.resume(coroutine.create(function()
+	wait(t)
+		if plr ~= nil then
+			if plr:findFirstChild("PlayerGui") then
+				if plr.PlayerGui:findFirstChild("GUI") then
+					if plr.PlayerGui.GUI:findFirstChild("Message") then
+					plr.PlayerGui.GUI.Message.Text = ""	
+					end
+				end
+			end
+		end	
+	end))	
+end
+
+function bMsg(text, t, plr, color)
+		if plr ~= nil then
+			if plr:findFirstChild("PlayerGui") then
+				if plr.PlayerGui:findFirstChild("GUI") then
+					if plr.PlayerGui.GUI:findFirstChild("BigMessage") then
+						if color == "Red" then
+						plr.PlayerGui.GUI.BigMessage.Message.TextColor3 = Color3.new(255/255, 0, 0)	
+						elseif color == "Green" then
+						plr.PlayerGui.GUI.BigMessage.Message.TextColor3 = Color3.new(85/255, 255/255, 0)
+						elseif color == "Orange" then
+						plr.PlayerGui.GUI.BigMessage.Message.TextColor3 = Color3.new(255/255, 170/255, 0)						
+						else
+						plr.PlayerGui.GUI.BigMessage.Message.TextColor3 = Color3.new(255/255, 255/255, 255/255)			
+						end
+					plr.PlayerGui.GUI.BigMessage.Message.Text = text
+					plr.PlayerGui.GUI.BigMessage.Visible = true	
+					end
+				end
+			end		
+		end
+
+	coroutine.resume(coroutine.create(function()
+	wait(t)
+		if plr ~= nil then
+			if plr:findFirstChild("PlayerGui") then
+				if plr.PlayerGui:findFirstChild("GUI") then
+					if plr.PlayerGui.GUI:findFirstChild("BigMessage") then
+						if color == "Red" then
+						plr.PlayerGui.GUI.BigMessage.Message.TextColor3 = Color3.new(255/255, 0, 0)	
+						elseif color == "Green" then
+						plr.PlayerGui.GUI.BigMessage.Message.TextColor3 = Color3.new(85/255, 255/255, 0)
+						elseif color == "Orange" then
+						plr.PlayerGui.GUI.BigMessage.Message.TextColor3 = Color3.new(255/255, 170/255, 0)					
+						else
+						plr.PlayerGui.GUI.BigMessage.Message.TextColor3 = Color3.new(255/255, 255/255, 255/255)			
+						end					
+					plr.PlayerGui.GUI.BigMessage.Message.Text = ""	
+					plr.PlayerGui.GUI.BigMessage.Visible = false
+					end
+				end
+			end
+		end
+	
+	end))
+end	
+
+function msg(text, t, ghost, color)
+	local r = game.Players:GetChildren()
+	for i = 1, #r do
+		if r[i] ~= nil then
+			if r[i]:findFirstChild("PlayerGui") then
+				if r[i].PlayerGui:findFirstChild("GUI") then
+					if r[i].PlayerGui.GUI:findFirstChild("Message") then
+						if color == "Red" then
+						r[i].PlayerGui.GUI.Message.TextColor3 = Color3.new(255/255, 0, 0)	
+						elseif color == "Green" then
+						r[i].PlayerGui.GUI.Message.TextColor3 = Color3.new(85/255, 255/255, 0)
+						elseif color == "Orange" then
+						r[i].PlayerGui.GUI.Message.TextColor3 = Color3.new(255/255, 170/255, 0)						
+						else
+						r[i].PlayerGui.GUI.Message.TextColor3 = Color3.new(255/255, 255/255, 255/255)			
+						end
+					r[i].PlayerGui.GUI.Message.Text = text	
+					end
+				end
+			end
+		end	
+	end
+	if not ghost then
+	wait(t)
+	for i = 1, #r do
+		if r[i] ~= nil then
+			if r[i]:findFirstChild("PlayerGui") then
+				if r[i].PlayerGui:findFirstChild("GUI") then
+					if r[i].PlayerGui.GUI:findFirstChild("Message") then
+						if color == "Red" then
+						r[i].PlayerGui.GUI.Message.TextColor3 = Color3.new(255/255, 0, 0)	
+						elseif color == "Green" then
+						r[i].PlayerGui.GUI.Message.TextColor3 = Color3.new(85/255, 255/255, 0)
+						elseif color == "Orange" then
+						r[i].PlayerGui.GUI.Message.TextColor3 = Color3.new(255/255, 170/255, 0)					
+						else
+						r[i].PlayerGui.GUI.Message.TextColor3 = Color3.new(255/255, 255/255, 255/255)			
+						end					
+					r[i].PlayerGui.GUI.Message.Text = ""	
+					end
+				end
+			end
+		end
+	end	
+	else
+		coroutine.resume(coroutine.create(function()
+		wait(t)
+			for i = 1, #r do
+				if r[i] ~= nil then
+					if r[i]:findFirstChild("PlayerGui") then
+						if r[i].PlayerGui:findFirstChild("GUI") then
+							if r[i].PlayerGui.GUI:findFirstChild("Message") then
+							r[i].PlayerGui.GUI.Message.Text = ""	
+							end
+						end
+					end
+				end
+			end			
+		end))	
+	end	
+end
+
+function scanModel(mo, md)
+	local p = mo:GetChildren()
+	local speed = 1300
+	if #p < 4000 then
+	speed = #p/200	
+	end	
+	if mo.Name == "Spooky Mansion" then
+	speed = #p/500
+	end	
+	if mo.Name == "Forgotten Farm" or mo.Name == "Swamp Fever" or mo.Name == "Camp Crystal"  then
+	speed = #p/500
+	end	
+	if mo.Name == "Grandma's House" then
+	speed = #p/800
+	end			
+	if mo.Name == "Mega Mall" or mo.Name == "Movie Theatre" or mo.Name == "Regal Resort" then
+	speed = #p/1600	
+	end	
+	if mo.Name == "Pirate Beach" then
+	speed = #p/2000		
+	end
+	local s = 0
+	for x = 1, #p do	
+		if p[x] ~= nil then
+			if p[x].className == "Part" or p[x].className == "UnionOperation" or p[x].className == "WedgePart" then
+			local part = p[x]:clone()
+			part.CFrame = p[x].CFrame
+				if part.Name == "Spawn" then
+					if md:findFirstChild("Spawns") == nil then
+						local model = Instance.new("Model")
+						model.Parent = md
+						model.Name = "Spawns"		
+					end	
+				part.Parent = md:findFirstChild("Spawns")	
+				else
+				part.Parent = md		
+				end	
+			s = s + 1
+				if s >= speed then
+				s = 0
+				msg("Loading map... " .. math.floor(100*(x/#p)) .. "%", 0, false)
+				--print("Loading map... " .. math.floor(100*(x/#p)) .. "%")		
+				end					
+			end
+		end
+	end
+end
+
+function loadMap(obj)
+	local model = Instance.new("Model")
+	model.Parent = workspace
+	model.Name = obj.Name
+	scanModel(obj, model)
+	return model
+end
+
+function getAliveMurderers()
+	local players = game.Players:GetChildren()
+	local n = 0
+	for i = 1, #players do
+		if players[i] ~= nil then
+			if players[i].Character ~= nil then
+				if players[i].Character:findFirstChild("Role") then
+					if players[i].Character:findFirstChild("Role").Value == "Murderer" then
+					n = n + 1	
+					end
+				end
+			end
+		end
+	end
+	return n
+end
+
+function getAlivePlayers()
+	local players = game.Players:GetChildren()
+	local n = 0
+	for i = 1, #players do
+		if players[i] ~= nil then
+			if players[i].Character ~= nil then
+				if players[i].Character:findFirstChild("Role") then
+					if players[i].Character:findFirstChild("Role").Value == "Innocent" or players[i].Character:findFirstChild("Role").Value == "Sheriff" then
+					n = n + 1	
+					end
+				end
+			end
+		end
+	end
+	return n
+end
+
+function dropGun(pos)
+	local g = game.ReplicatedStorage.Local_Character.Gun:clone()
+	g.Parent = workspace
+	local s = Instance.new("Sparkles")
+	s.Parent = g
+	s.SparkleColor = Color3.new(0, 170/255, 255/255)
+	g.CFrame = pos * CFrame.fromEulerAnglesXYZ(math.rad(270), 0, 0)
+	g.Anchored = true
+	coroutine.resume(coroutine.create(function()
+		repeat
+		wait()	
+		g.CFrame = g.CFrame * CFrame.fromEulerAnglesXYZ(0, 0, math.rad(1))
+		until g == nil
+	end))
+	g.Touched:connect(function(hit)
+		if hit ~= nil then
+			if hit.Parent ~= nil then
+			local h = hit.Parent:findFirstChild("Humanoid")
+			local r = hit.Parent:findFirstChild("Role")
+				if h then
+					if r then
+						if r.Value == "Innocent" then
+						r.Value = "Sheriff"
+						g.Parent = nil
+						game.ServerStorage.Tools.Gun:clone().Parent = game.Players:findFirstChild(hit.Parent.Name).Backpack	
+						end
+					end
+				end
+			end
+		end	
+	end)
+end
+
+function start(mode)
+	playSound("All", "Role")
+	wait(2)
+	local spawns = currentMap.Spawns:GetChildren()
+	local players = game.Players:GetChildren()
+	for i = 1, #players do
+		if players[i] ~= nil then
+			if players[i].Character ~= nil then
+				if players[i].Character:findFirstChild("Humanoid") ~= nil then
+					if players[i].Character:findFirstChild("Humanoid").Health >= 1 then 
+						if players[i].Character:findFirstChild("Torso") ~= nil then
+						local ransp = spawns[math.random(1, #spawns)].CFrame + Vector3.new(math.random(-5, 5), 3, math.random(-5, 5))
+						players[i].Character.Torso.CFrame = ransp
+						wait()
+							if players[i] ~= nil then
+									if players[i].Character ~= nil then
+									players[i].Character.Torso.CFrame = ransp
+									end
+							end
+							wait()
+							if players[i] ~= nil then
+									if players[i].Character ~= nil then
+									players[i].Character.Torso.CFrame = ransp
+									end
+							end
+						end
+					end
+				end
+			end	
+		end
+	end		
+			
+	for i = 1, #players do
+		if players[i] ~= nil then			
+				local dataKey = players[i]:findFirstChild("DataString") 
+				if dataKey ~= nil then
+				local data = game.ServerStorage.PlayerDataService:findFirstChild(dataKey.Value)	
+				if data ~= nil then
+					if data:findFirstChild("Loaded") ~= nil then
+						if data:findFirstChild("Loaded").Value == true then
+						if data:findFirstChild("Perks") ~= nil then
+							if data.Perks.Value ~= nil then
+								if data.Perks.Value.Name == "Kevlar" then
+									local plr = players[i]
+									if players[i].Character ~= nil then
+										if plr.Character:findFirstChild("Humanoid") and plr.Character:findFirstChild("Health") then	
+										plr.Character.Health:Destroy()
+										plr.Character.Humanoid.MaxHealth = 200	
+										plr.Character.Humanoid.Health = 200
+										local used = false
+											plr.Character.Humanoid.Changed:connect(function()
+												if plr.Character ~= nil then
+													if plr.Character:findFirstChild("Humanoid") then
+														if plr.Character.Humanoid.Health == 100 or plr.Character.Humanoid.Health == 1400 then
+															if not used then
+															plr.PlayerGui.Sounds.KevlarHurt:Play()	
+															used = true
+															end
+														end 
+													end	
+												end
+											end)	
+										end
+									end
+									
+								elseif data.Perks.Value.Name == "Identifier" then
+									local ppp = players[i]
+									coroutine.resume(coroutine.create(function()
+									wait(3)
+										if ppp ~= nil then
+											if ppp.Character ~= nil then
+												if ppp.Character:findFirstChild("Role") then
+													if ppp.Character:findFirstChild("Role").Value == "Murderer" then
+													local g = game.ServerStorage.Tools:findFirstChild("Identifier")	
+														if g then
+														g:clone().Parent = ppp.Backpack	
+														end											
+													end 
+												end	
+											end
+										end
+									end))
+								elseif data.Perks.Value.Name == "Anonymous" then
+									local ppp = players[i]
+									local pp = game.Players:GetChildren()
+									local pTable = {}
+									for x = 1, #pp do
+										if pp[x] ~= nil then
+											if pp[x].Name ~= ppp.Name and string.sub(pp[x].Name, 1, 6) ~= "Guest "  then
+											table.insert(pTable, pp[x])	
+											end
+										end
+									end
+									local ranP = pTable[math.random(1, #pTable)]
+									if ranP ~= nil and ppp.Character and ppp.Character:findFirstChild("Torso") then
+									local namer = ranP.Name
+									local lastPos = ppp.Character.Torso.CFrame 
+									ppp.CharacterAppearance = "http://www.roblox.com/asset/CharacterFetch.ashx?userId=" .. ranP.userId+math.random(1, 10)
+									ppp:LoadCharacter()		
+									wait()
+									if ppp ~= nil and ranP ~= nil then
+										if ppp.Character ~= nil and ranP.Character ~= nil and ranP.Character:findFirstChild("Head") then
+											if ppp.Character:findFirstChild("Torso") ~= nil then
+											local char = ppp.Character
+											local mod = Instance.new("Model", char) mod.Name = namer
+											local cl = char.Head:Clone() cl.Parent = mod local hum = Instance.new("Humanoid", mod) hum.Name = "NameTag" hum.MaxHealth = 100 hum.Health = 100
+											local weld = Instance.new("Weld", cl) weld.Part0 = cl weld.Part1 = char.Head
+											char.Head.Transparency = 1
+											hum.NameOcclusion = "OccludeAll"
+											cl.CanCollide = false
+											cl.BrickColor = ranP.Character:findFirstChild("Head").BrickColor
+											ppp.Character.Torso.CFrame = lastPos
+											if char:findFirstChild("TwistedRadio") ~= nil then										
+											char:findFirstChild("TwistedRadio").Parent = nil	
+											end
+											if char.Head then
+												if char.Head:findFirstChild("face") then
+												char.Head:findFirstChild("face").Parent = nil	
+												end
+											end
+											local h = ppp.Character:findFirstChild("Humanoid")
+											
+												if h then
+
+												h.Changed:connect(function()
+													
+													if hum ~= nil and h ~= nil then
+													hum.Health = h.Health
+													hum.MaxHealth = h.MaxHealth	
+													hum.NameOcclusion = h.NameOcclusion
+													
+													end	
+												end)													
+												h.Died:connect(function()
+													if cl ~= nil then
+													cl.Parent = nil	
+													end
+													if h.Parent:findFirstChild("Head") then
+														
+													h.Parent.Head.Transparency = 0
+													end
+												wait(1)
+													if ppp ~= nil then
+													ppp.CharacterAppearance = "http://www.roblox.com/asset/CharacterFetch.ashx?userId=" .. ppp.userId
+													end	
+												--ppp:LoadCharacter()			
+												end)
+											end
+										end							
+									end															
+								end
+								end
+								end
+							end
+							end
+							if data:findFirstChild("Gear") ~= nil then
+								if data.Gear.Value ~= nil then
+									local g = game.ServerStorage.Tools:findFirstChild(data.Gear.Value.Name)	
+									if g then
+									g:clone().Parent = players[i].Backpack	
+									end
+								end 
+							end
+							if data:findFirstChild("Pets") ~= nil then
+								if data.Pets.Value ~= nil and players[i].Character ~= nil then
+									local g = game.ServerStorage.Tools:findFirstChild("Pet")	
+									if g then
+									local newPet = g:clone()
+									newPet.Parent = players[i].Character
+										if newPet:findFirstChild("PetScript") ~= nil then
+										newPet:findFirstChild("PetScript").Disabled = false	
+										end
+
+										local gg = game.ReplicatedStorage.Shop.Pets:FindFirstChild(data.Pets.Value.Name)
+											if gg then
+												if gg:findFirstChild("Pet") ~= nil then
+												local c = gg.Pet:GetChildren()
+												for xx = 1, #c do
+													if c[xx] ~= nil then
+													c[xx]:clone().Parent = newPet
+													end
+												end
+												end
+											end
+										end
+									
+								end 
+							end							
+		
+							if Game:GetService("GamePassService"):PlayerHasPass(players[i], 177132160) or checkRadio(players[i]) then	-- Radio
+								if players[i].Character ~= nil then
+									if players[i].Character:findFirstChild("Torso") ~= nil then
+										local radio = game.ServerStorage.Tools.TwistedRadio:clone()
+										radio.Parent = players[i].Character
+										local weld = Instance.new("Weld")
+										weld.Name = "BackWeld"
+										weld.Part0 = players[i].Character:findFirstChild("Torso")
+										weld.Part1 = radio
+										weld.C0 = CFrame.new(0,0,1)
+										weld.C0 = weld.C0 * CFrame.fromEulerAnglesXYZ(math.rad(180),math.rad(0), math.rad(180+45))
+										weld.Parent = radio		
+										if Game:GetService("GamePassService"):PlayerHasPass(players[i], 182499700) and radio ~= nil then
+											if radio:findFirstChild("Mesh") ~= nil then
+											radio.Mesh.MeshId = "http://www.roblox.com/asset/?id=212302951"
+											radio.Mesh.TextureId = "http://www.roblox.com/asset/?id=212303049"
+											radio.Mesh.Scale = Vector3.new(4, 4, 5)
+											end	
+										end								
+									end
+								end
+							else
+								if players[i].Character ~= nil then
+									if players[i].Character:findFirstChild("Torso") ~= nil and players[i].Character:findFirstChild("Head") ~= nil then
+									local h = Instance.new("Hat")
+									local p = Instance.new("Part")
+									h.Name = "Earbuds" 
+									p.Parent = h
+									p.Position = players[i].Character:findFirstChild("Head").Position
+									p.Name = "Handle" 
+									p.Transparency = 1
+									p.formFactor = 0
+									p.Size = Vector3.new(-0,-0,-1) 
+									p.BottomSurface = 0 
+									p.TopSurface = 0 
+									p.Locked = true 
+									game.ServerStorage.Tools.Earbuds.Mesh:clone().Parent = p
+									h.Parent = players[i].Character
+									h.AttachmentPos = Vector3.new(0.1, 1.65, 0.33)								
+									end
+								end									
+							end																
+								if Game:GetService("GamePassService"):PlayerHasPass(players[i], 177132160) or checkRadio(players[i]) then	-- Radio
+								
+										if players[i]:findFirstChild("PlayerGui") ~= nil then
+											if players[i].PlayerGui:findFirstChild("GUI") ~= nil then
+												if players[i].PlayerGui.GUI:findFirstChild("TwistedRadioGUI") ~= nil then
+												players[i].PlayerGui.GUI:findFirstChild("TwistedRadioGUI").Visible = true	
+												end
+											end
+										end										
+								else
+										if players[i]:findFirstChild("PlayerGui") ~= nil then
+											if players[i].PlayerGui:findFirstChild("GUI") ~= nil then
+												if players[i].PlayerGui.GUI:findFirstChild("TwistedRadioGUI") ~= nil then
+												players[i].PlayerGui.GUI:findFirstChild("TwistedRadioGUI").Visible = true
+													if players[i].PlayerGui.GUI.TwistedRadioGUI:findFirstChild("BuyRadio") ~= nil then
+													players[i].PlayerGui.GUI.TwistedRadioGUI.BuyRadio.Visible = true	
+													end
+								
+													if players[i].PlayerGui.GUI.TwistedRadioGUI:findFirstChild("Message") ~= nil then
+													players[i].PlayerGui.GUI.TwistedRadioGUI.Message.Text = "Earbuds"
+													end
+												end
+											end
+										end																	
+																
+						end	
+					end
+					end	
+					
+							if players[i].Character ~= nil then
+								local p = players[i].Character:GetChildren()
+								for x = 1, #p do
+									if p[x] ~= nil then
+										if p[x].Parent ~= nil then
+											if p[x].className == "Hat" then
+												if p[x]:findFirstChild("Handle") ~= nil then
+												p[x]:findFirstChild("Handle").CanCollide = false	
+												end	
+												if p[x].Name == "KeyruneAntlers" then
+												p[x].Parent = nil	
+												end
+											end
+										end
+									end
+								end						
+								if players[i].Character:findFirstChild("Humanoid") ~= nil then
+								players[i].Character.Humanoid.NameOcclusion = "OccludeAll"
+								local ragdoll = script.Raggy:clone()
+								ragdoll.Parent = players[i].Character
+								ragdoll.Disabled = false								
+								end		
+							end						
+			if players[i]:findFirstChild("PlayerGui") then
+				if players[i].PlayerGui:findFirstChild("GUI") then
+					if players[i].PlayerGui.GUI:findFirstChild("Shop") then
+					players[i].PlayerGui.GUI:findFirstChild("Shop").Visible = false	
+					end
+					if players[i].PlayerGui.GUI:findFirstChild("ShopGUI") then
+					players[i].PlayerGui.GUI:findFirstChild("ShopGUI").Visible = false	
+					end					
+					if players[i].PlayerGui.GUI:findFirstChild("Spectate") then
+					players[i].PlayerGui.GUI:findFirstChild("Spectate").Visible = false	
+					end					
+				end
+			end					
+				end
+			end	
+		end
+	end	
+	workspace.GameInProgress.Value = true
+	workspace.GameInProgress.Mode.Value = modes[ran2]	
+	startingPlayers = #players	
+	coroutine.resume(coroutine.create(function()
+	wait(1.3)
+	local playersp = game.Players:GetChildren()
+		for x = 1, #playersp do
+			if playersp[x] ~= nil then
+				if playersp[x].Character ~= nil then
+					if playersp[x].Character:findFirstChild("Humanoid") ~= nil and workspace:FindFirstChild("Lobby") then
+						if playersp[x].Character:findFirstChild("Humanoid").Health >= 1 and workspace.Lobby:FindFirstChild("MainSpawn") then 
+							if playersp[x].Character:findFirstChild("Torso") ~= nil and playersp[x].Character:findFirstChild("Role") then
+								if (playersp[x].Character:findFirstChild("Torso").Position - workspace:FindFirstChild("Lobby").MainSpawn.Position).Magnitude <= 300 then
+print("player stuck in lobby... teleporting.")									
+								playersp[x].Character.Torso.CFrame = spawns[math.random(1, #spawns)].CFrame + Vector3.new(math.random(-5, 5), 3, math.random(-5, 5))						
+								end							
+							end							
+						end	
+					end
+				end	
+			end
+		end			
+	end))
+	
+	local function checkPlayersInLobby()
+		coroutine.resume(coroutine.create(function()
+		local playersp = game.Players:GetChildren()
+			for x = 1, #playersp do
+				if playersp[x] ~= nil then
+					if playersp[x].Character ~= nil then
+						if playersp[x].Character:findFirstChild("Humanoid") ~= nil and workspace:FindFirstChild("Lobby") then
+							if playersp[x].Character:findFirstChild("Humanoid").Health >= 1 and workspace.Lobby:FindFirstChild("MainSpawn") then 
+								if playersp[x].Character:findFirstChild("Torso") ~= nil and playersp[x].Character:findFirstChild("Role") then
+									if (playersp[x].Character:findFirstChild("Torso").Position - workspace:FindFirstChild("Lobby").MainSpawn.Position).Magnitude <= 300 then
+									print("player stuck in lobby... teleporting.")									
+									playersp[x].Character.Torso.CFrame = spawns[math.random(1, #spawns)].CFrame + Vector3.new(math.random(-5, 5), 3, math.random(-5, 5))						
+									end							
+								end							
+							end	
+						end
+					end	
+				end
+			end			
+		end))	
+	end		
+			
+	if mode == "Classic" then
+	local playerss = {}	
+	local noHiding = true	
+	t = timer
+	for i = 1, #players do
+		if players[i] ~= nil then
+			if players[i]:findFirstChild("Chance") ~= nil then
+				local c = players[i]:findFirstChild("Chance")
+				for x = 1, c.Value do	
+					table.insert(playerss, players[i])
+				end	
+			end
+		end
+	end	
+	for i = 1, #players do
+		if players[i] ~= nil then
+			if players[i]:findFirstChild("Chance") ~= nil then
+				local c = players[i]:findFirstChild("Chance")
+					if Game:GetService("GamePassService"):PlayerHasPass(players[i], 177159435) then
+					c.Value = c.Value + 8	
+					else	
+					c.Value = c.Value + 1
+					end
+				end	
+			end
+		end
+			
+	--[[for i = 1, #players do
+		if players[i] ~= nil then
+			if Game:GetService("GamePassService"):PlayerHasPass(players[i], 177159435) then
+				for x = 1, 5 do	
+					table.insert(playerss, players[i])
+				end
+			else
+			table.insert(playerss, players[i])		
+			end
+		end
+	end]]
+	local ran = math.random(1, #playerss)	
+	for i = 1, 1 do
+		if playerss[ran] ~= nil  and playerss[ran].Character ~= nil then
+			local c = playerss[ran]:findFirstChild("Chance")
+			if c ~= nil then
+			c.Value = 1	
+			end
+		playSound(playerss[ran].Name, "Murderer")	
+		bMsg("You are a MURDERER", 5, playerss[ran], "Red")
+		local role = Instance.new("StringValue")
+		role.Name = "Role"
+		role.Parent = playerss[ran].Character
+		role.Value = "Murderer"	
+		local murderer = playerss[ran]	
+			coroutine.resume(coroutine.create(function()	
+				for x = 10, 1, -1 do
+				wait(1)
+					if murderer ~= nil then
+					pMsg("You will recieve your knife in " .. x .. " seconds.", 1, murderer, "Red")
+						if x == 1 then
+						pMsg("You will recieve your knife in " .. x .. " second.", 1, murderer, "Red")	
+						end
+					end
+				end
+				wait(1)
+				if murderer ~= nil then
+					if murderer.Character ~= nil then
+						if murderer.Character:findFirstChild("Role") ~= nil then
+							if murderer.Character:findFirstChild("Role").Value == "Murderer" then
+							game.ServerStorage.Tools.Knife:clone().Parent = murderer.Backpack	
+							end	
+						end
+					end
+				end
+			end))
+		end
+	end	
+			for y = 1, #players do
+				if players[y] ~= nil then
+					if players[y].Character ~= nil then
+						if players[y].Character:findFirstChild("Role") ~= nil then
+						table.remove(players, y)
+						end
+					end
+				end
+			end	
+	local playerss = {}	
+		for i = 1, #players do
+			if players[i] ~= nil then
+				if Game:GetService("GamePassService"):PlayerHasPass(players[i], 177159453) then
+					for x = 1, 5 do	
+						table.insert(playerss, players[i])
+					end
+				else
+				table.insert(playerss, players[i])		
+				end
+			end
+		end	
+	local ran = math.random(1, #playerss)
+	for i = 1, 1 do
+		if playerss[ran] ~= nil and playerss[ran].Character ~= nil then
+		bMsg("You are a SHERIFF", 5, playerss[ran], "Orange")	
+		playSound(playerss[ran].Name, "Sheriff")
+		local role = Instance.new("StringValue")
+		role.Name = "Role"
+		role.Parent = playerss[ran].Character
+		role.Value = "Sheriff"					
+		game.ServerStorage.Tools.Gun:clone().Parent = playerss[ran].Backpack
+		local h = playerss[ran].Character:findFirstChild("Humanoid")
+			if h ~= nil then
+				h.Died:connect(function()
+					t = t + killTime
+					if h.Parent:findFirstChild("Role") then
+						if h.Parent.Role.Value == "Sheriff" then
+							if h.Parent:findFirstChild("Torso") ~= nil then
+							dropGun(h.Parent.Torso.CFrame)	
+							end
+						end
+					end	
+				end)
+			end
+		end
+	end	
+			for y = 1, #players do
+				if players[y] ~= nil then
+					if players[y].Character ~= nil then
+						if players[y].Character:findFirstChild("Role") ~= nil then
+						table.remove(players, y)
+						end
+					end
+				end
+			end	
+	for i = 1, #players do
+		if players[i] ~= nil and players[i].Character ~= nil then
+		bMsg("You are INNOCENT", 5, players[i], "Green")
+		playSound(players[i].Name, "Innocent")
+		local role = Instance.new("StringValue")
+		role.Name = "Role"
+		role.Parent = players[i].Character
+		role.Value = "Innocent"	
+		local h = players[i].Character:findFirstChild("Humanoid")
+			if h ~= nil then
+				h.Died:connect(function()
+					t = t + killTime
+					if h.Parent:findFirstChild("Role") then
+						if h.Parent.Role.Value == "Sheriff" then
+							if h.Parent:findFirstChild("Torso") ~= nil then
+							dropGun(h.Parent.Torso.CFrame)	
+							end
+						end
+					end	
+				end)
+			end
+		end
+	end
+	wait(10)			
+	repeat 
+	wait(1)	
+		if t >= timer then
+		t = timer	
+		end
+		if noHiding and getAlivePlayers() <= 2 then
+		noHiding = false	
+		msg(getAlivePlayers() .. " Innocent are remaining. Locations have been revealed.", 5, true)	
+		local players = game.Players:GetChildren()
+			for i = 1, #players do
+				if players[i] ~= nil then
+					if players[i].Character ~= nil then
+						if players[i].Character:findFirstChild("Role") then
+							if players[i].Character:findFirstChild("Humanoid") then
+							players[i].Character:findFirstChild("Humanoid").NameOcclusion = "NoOcclusion"	
+							end	
+						end
+					end	
+				end
+			end				
+		end
+	updateTime(t)			
+	t = t - 1
+	checkPlayersInLobby()
+	pa = getAlivePlayers()
+	ma = getAliveMurderers()
+	until t < 0 or pa == 0 or ma == 0
+	local p = game.Players:GetChildren()
+		if pa == 0 then
+		playSound("All", "Lose")	
+			for i = 1, #p do
+			bMsg("THE MURDERER WINS!", 6, p[i], "Red")	
+			end	
+		roundResults("Murderer", 8*startingPlayers)	
+		elseif ma == 0 or t <= 0 then
+			playSound("All", "Win")
+			for i = 1, #p do
+			bMsg("THE INNOCENT WIN!", 6, p[i], "Green")	
+			end
+		roundResults("Innocent", 3*startingPlayers)	
+		elseif pa == 0 and ma == 0 then
+		playSound("All", "Draw")	
+			for i = 1, #p do
+			bMsg("EVERYONE DIED, NO ONE WINS!", 6, p[i])
+			--roundResults(nil, 0, getAlivePlayers(), startingPlayers)	
+			end
+		end
+	elseif mode == "Murder Madness"	then
+	local noHiding = true	
+	--local players = game.Players:GetChildren()		
+	t = timer	
+	for i = 1, #players do
+		if players[i] ~= nil  and players[i].Character ~= nil then
+		bMsg("You are a MURDERER", 5, players[i], "Red")
+		playSound(players[i].Name, "Murderer")
+		local role = Instance.new("StringValue")
+		role.Name = "Role"
+		role.Parent = players[i].Character
+		role.Value = "Murderer"	
+		local murderer = players[i]	
+			local h = murderer.Character:findFirstChild("Humanoid")
+			if h then
+				h.Died:connect(function()
+				t = t + killTime
+				end)
+			end				
+			coroutine.resume(coroutine.create(function()	
+				for x = 10, 1, -1 do
+				wait(1)
+					if murderer ~= nil then
+					pMsg("You will recieve your knife in " .. x .. " seconds.", 1, murderer, "Red")
+						if x == 1 then
+						pMsg("You will recieve your knife in " .. x .. " second.", 1, murderer, "Red")	
+						end
+					end
+				end	
+				wait(1)	
+				if murderer ~= nil then
+					if murderer.Character ~= nil then
+						if murderer.Character:findFirstChild("Role") then
+						game.ServerStorage.Tools.Knife:clone().Parent = murderer.Backpack	
+						end
+					end
+				end
+			end))
+		end
+	end	
+	wait(10)			
+	repeat 
+	wait(1)	
+		if t >= timer then
+		t = timer	
+		end
+		if noHiding and getAliveMurderers() <= 3 then
+		noHiding = false	
+		msg(getAliveMurderers() .. " Murderers are remaining. Locations have been revealed.", 5, true)	
+		local players = game.Players:GetChildren()
+			for i = 1, #players do
+				if players[i] ~= nil then
+					if players[i].Character ~= nil then
+						if players[i].Character:findFirstChild("Role") then
+							if players[i].Character:findFirstChild("Humanoid") then
+							players[i].Character:findFirstChild("Humanoid").NameOcclusion = "NoOcclusion"	
+							end	
+						end
+					end	
+				end
+			end				
+		end
+	updateTime(t)
+	t = t - 1
+	checkPlayersInLobby()
+	ma = getAliveMurderers()
+	until t < 0 or ma == 0 or ma == 1
+	winner = nil
+	local p = game.Players:GetChildren()
+		if ma == 1 then
+			local pp = game.Players:GetChildren()
+			for x = 1, #pp do
+				if pp[x] ~= nil then
+					if pp[x].Character ~= nil then
+						if pp[x].Character:findFirstChild("Role") then
+						winner = pp[x]	
+						end
+					end
+				end
+			end
+			for i = 1, #p do
+				if winner then
+				--print("TheMadEgg awarded")	
+				--game:GetService("BadgeService"):AwardBadge(winner.userId, 227454028)	
+				--game:GetService("ReplicatedStorage"):WaitForChild("BadgeManagementHandler"):Invoke("AwardBadge", {Player = winner, BadgeId = 227454028})
+						
+				bMsg(string.upper(winner.Name) .. " WON MURDER MADNESS!", 6, p[i], "Red")
+				--playSound("All", "Win")
+				end	
+			end	
+			playSound("All", "Win")
+			roundResults(winner, 8*startingPlayers)	
+		elseif t <= 0 then
+			for i = 1, #p do
+			bMsg("TIMES UP! NO ONE WINS!", 6, p[i])
+			--playSound("All", "Lose")	
+			end				
+		playSound("All", "Lose")		
+		elseif ma == 0 then
+			for i = 1, #p do
+			bMsg("EVERYONE DIED, NO ONE WINS!", 6, p[i])
+			--playSound("All", "Draw")	
+			end
+		playSound("All", "Draw")	
+		end	
+	elseif mode == "Sheriff Showdown" then
+	local noHiding = true	
+	--local players = game.Players:GetChildren()		
+	t = timer	
+	for i = 1, #players do
+		if players[i] ~= nil  and players[i].Character ~= nil then
+		bMsg("You are a SHERIFF", 5, players[i], "Orange")
+		playSound(players[i].Name, "Sheriff")
+		local role = Instance.new("StringValue")
+		role.Name = "Role"
+		role.Parent = players[i].Character
+		role.Value = "Sheriff"	
+		local murderer = players[i]	
+			local h = murderer.Character:findFirstChild("Humanoid")
+			if h then
+				h.Died:connect(function()
+				t = t + killTime
+				end)
+			end				
+			coroutine.resume(coroutine.create(function()	
+				for x = 10, 1, -1 do
+				wait(1)
+					if murderer then
+					pMsg("You will recieve your gun in " .. x .. " seconds.", 1, murderer, "Orange")
+						if x == 1 then
+						pMsg("You will recieve your gun in " .. x .. " second.", 1, murderer, "Orange")	
+						end
+					end
+				end
+				wait(1)		
+				if murderer ~= nil then
+					if murderer.Character then
+						if murderer.Character:findFirstChild("Role") then
+						game.ServerStorage.Tools.Gun:clone().Parent = murderer.Backpack	
+						end
+					end
+				end
+			end))
+		end
+	end	
+	wait(10)			
+	repeat 
+	wait(1)	
+		if t >= timer then
+		t = timer	
+		end
+		if noHiding and getAlivePlayers() <= 3 then
+		noHiding = false	
+		msg(getAlivePlayers() .. " Sheriffs are remaining. Locations have been revealed.", 5, true)	
+		local players = game.Players:GetChildren()
+			for i = 1, #players do
+				if players[i] ~= nil then
+					if players[i].Character ~= nil then
+						if players[i].Character:findFirstChild("Role") then
+							if players[i].Character:findFirstChild("Humanoid") then
+							players[i].Character:findFirstChild("Humanoid").NameOcclusion = "NoOcclusion"	
+							end	
+						end
+					end	
+				end
+			end				
+		end
+	updateTime(t)
+	t = t - 1
+	checkPlayersInLobby()
+	ma = getAlivePlayers()
+	until t < 0 or ma == 0 or ma == 1
+	winner = nil
+	local p = game.Players:GetChildren()
+		if ma == 1 then
+			local pp = game.Players:GetChildren()
+			for x = 1, #pp do
+				if pp[x] ~= nil then
+					if pp[x].Character ~= nil then
+						if pp[x].Character:findFirstChild("Role") then
+						winner = pp[x]	
+						end
+					end
+				end
+			end
+			for i = 1, #p do
+				if winner then
+				bMsg(string.upper(winner.Name) .. " WON SHERIFF SHOWDOWN!", 6, p[i], "Orange")
+				--playSound("All", "Win")
+				end	
+			end	
+			playSound("All", "Win")
+			roundResults(winner, 8*startingPlayers)	
+		elseif t <= 0 then
+			for i = 1, #p do
+			bMsg("TIMES UP! NO ONE WINS!", 6, p[i])	
+			--playSound("All", "Lose")
+			end	
+		playSound("All", "Lose")				
+		elseif ma == 0 then
+			for i = 1, #p do
+			bMsg("EVERYONE DIED, NO ONE WINS!", 6, p[i])
+			--playSound("All", "Draw")	
+			end
+		playSound("All", "Draw")		
+		end	
+	elseif mode == "Cold Killer" then
+	local noHiding = true	
+	--local players = game.Players:GetChildren()		
+	t = 180
+	local ran = math.random(1, #players)	
+	for i = 1, 1 do
+		if players[ran] ~= nil  and players[ran].Character ~= nil then
+		bMsg("You are a MURDERER", 5, players[ran], "Red")
+		playSound(players[ran].Name, "Murderer")
+		local role = Instance.new("StringValue")
+		role.Name = "Role"
+		role.Parent = players[ran].Character
+		role.Value = "Murderer"	
+		local murderer = players[ran]	
+			coroutine.resume(coroutine.create(function()	
+				for x = 10, 1, -1 do
+				wait(1)
+					if murderer.Character then
+					pMsg("You will recieve your knife in " .. x .. " seconds.", 1, murderer, "Red")
+						if x == 1 then
+						pMsg("You will recieve your knife in " .. x .. " second.", 1, murderer, "Red")	
+						end
+					end
+				end
+				wait(1)
+				if murderer ~= nil then
+					if murderer.Character then
+						if murderer.Character:findFirstChild("Role") then
+							if murderer.Character:findFirstChild("Role").Value == "Murderer" then
+							game.ServerStorage.Tools.Knife:clone().Parent = murderer.Backpack	
+							--makeReaper(murderer)
+							end	
+						end
+					end
+				end
+			end))
+		table.remove(players, ran)
+		end
+	end	
+	for i = 1, #players do
+		if players[i] ~= nil and players[i].Character ~= nil then
+		bMsg("You are INNOCENT", 5, players[i], "Green")
+		playSound(players[i].Name, "Innocent")
+		local role = Instance.new("StringValue")
+		role.Name = "Role"
+		role.Parent = players[i].Character
+		role.Value = "Innocent"	
+		--[[local h = players[i].Character:findFirstChild("Humanoid")
+			if h then
+				h.Died:connect(function()
+				t = t + killTime
+				end)
+			end]]
+		end
+	end	
+	wait(10)			
+	repeat 
+	wait(1)	
+		if noHiding and getAlivePlayers() <= 2 then
+		noHiding = false	
+		msg(getAlivePlayers() .. " Innocent are remaining. Locations have been revealed.", 5, true)	
+		local players = game.Players:GetChildren()
+			for i = 1, #players do
+				if players[i] ~= nil then
+					if players[i].Character ~= nil then
+						if players[i].Character:findFirstChild("Role") then
+							if players[i].Character:findFirstChild("Humanoid") then
+							players[i].Character:findFirstChild("Humanoid").NameOcclusion = "NoOcclusion"	
+							end	
+						end
+					end	
+				end
+			end				
+		end
+	updateTime(t)			
+	t = t - 1
+	checkPlayersInLobby()
+	pa = getAlivePlayers()
+	ma = getAliveMurderers()
+	until t < 0 or pa == 0 or ma == 0
+	local p = game.Players:GetChildren()
+		if pa == 0 then
+			for i = 1, #p do
+			bMsg("THE MURDERER WINS!", 6, p[i], "Red")	
+			--playSound("All", "Lose")
+			end	
+			playSound("All", "Lose")
+		roundResults("Murderer", 8*startingPlayers)		
+		elseif ma == 0 or t <= 0 then
+			for i = 1, #p do
+			bMsg("THE INNOCENT WIN!", 6, p[i], "Green")	
+			--playSound("All", "Win")
+			end
+			playSound("All", "Win")
+		roundResults("Innocent", 3*startingPlayers)		
+		elseif pa == 0 and ma == 0 then
+			for i = 1, #p do
+			bMsg("EVERYONE DIED, NO ONE WINS!", 6, p[i])
+			--playSound("All", "Draw")	
+			end
+			playSound("All", "Draw")
+		end			
+	elseif mode == "Double Trouble" then
+	local noHiding = true	
+	t = timer
+	for x = 1, 2 do
+	local ran = math.random(1, #players)	
+		for i = 1, 1 do
+			if players[ran] ~= nil  and players[ran].Character ~= nil then
+			bMsg("You are a MURDERER", 5, players[ran], "Red")
+			playSound(players[ran].Name, "Murderer")
+			local role = Instance.new("StringValue")
+			role.Name = "Role"
+			role.Parent = players[ran].Character
+			role.Value = "Murderer"	
+			local murderer = players[ran]	
+				coroutine.resume(coroutine.create(function()	
+					for x = 10, 1, -1 do
+					wait(1)
+						if murderer then
+						pMsg("You will recieve your knife in " .. x .. " seconds.", 1, murderer, "Red")
+							if x == 1 then
+							pMsg("You will recieve your knife in " .. x .. " second.", 1, murderer, "Red")	
+							end
+						end
+					end
+					wait(1)
+					if murderer ~= nil then
+						if murderer.Character then
+							if murderer.Character:findFirstChild("Role") then
+								if murderer.Character:findFirstChild("Role").Value == "Murderer" then
+								game.ServerStorage.Tools.Knife:clone().Parent = murderer.Backpack	
+								end	
+							end
+						end
+					end
+				end))
+			table.remove(players, ran)
+			end
+		end	
+	end
+	for x = 1, 2 do
+	local ran = math.random(1, #players)
+		for i = 1, 1 do
+			if players[ran] ~= nil and players[ran].Character ~= nil then
+			bMsg("You are a SHERIFF", 5, players[ran], "Orange")	
+			playSound(players[ran].Name, "Sheriff")
+			local role = Instance.new("StringValue")
+			role.Name = "Role"
+			role.Parent = players[ran].Character
+			role.Value = "Sheriff"					
+			game.ServerStorage.Tools.Gun:clone().Parent = players[ran].Backpack
+			local h = players[ran].Character:findFirstChild("Humanoid")
+				if h then
+					h.Died:connect(function()
+						t = t + killTime
+						if h.Parent:findFirstChild("Role") then
+							if h.Parent.Role.Value == "Sheriff" then
+								if h.Parent:findFirstChild("Torso") then
+								dropGun(h.Parent.Torso.CFrame)	
+								end
+							end
+						end							
+					end)
+				end
+			table.remove(players, ran)
+			end
+		end	
+	end
+	for i = 1, #players do
+		if players[i] ~= nil and players[i].Character ~= nil then
+		bMsg("You are INNOCENT", 5, players[i], "Green")
+		playSound(players[i].Name, "Innocent")
+		local role = Instance.new("StringValue")
+		role.Name = "Role"
+		role.Parent = players[i].Character
+		role.Value = "Innocent"	
+		local h = players[i].Character:findFirstChild("Humanoid")
+			if h then
+				h.Died:connect(function()
+					t = t + killTime
+						if h.Parent:findFirstChild("Role") then
+							if h.Parent.Role.Value == "Sheriff" then
+								if h.Parent:findFirstChild("Torso") then
+								dropGun(h.Parent.Torso.CFrame)	
+								end
+							end
+						end					
+				end)
+			end
+		end
+	end
+	wait(10)			
+	repeat 
+	wait(1)	
+		if t >= timer then
+		t = timer	
+		end
+		if noHiding and getAlivePlayers() <= 2 then
+		noHiding = false	
+		msg(getAlivePlayers() .. " Innocent are remaining. Locations have been revealed.", 5, true)	
+		local players = game.Players:GetChildren()
+			for i = 1, #players do
+				if players[i] ~= nil then
+					if players[i].Character ~= nil then
+						if players[i].Character:findFirstChild("Role") then
+							if players[i].Character:findFirstChild("Humanoid") then
+							players[i].Character:findFirstChild("Humanoid").NameOcclusion = "NoOcclusion"	
+							end	
+						end
+					end	
+				end
+			end				
+		end
+	updateTime(t)			
+	t = t - 1
+	checkPlayersInLobby()
+	pa = getAlivePlayers()
+	ma = getAliveMurderers()
+	until t < 0 or pa == 0 or ma == 0
+	local p = game.Players:GetChildren()
+		if pa == 0 then
+			for i = 1, #p do
+			bMsg("THE MURDERERS WIN!", 6, p[i], "Red")	
+			--playSound("All", "Lose")
+			end	
+		playSound("All", "Lose")	
+		roundResults("Murderer", 8*startingPlayers)	
+		elseif ma == 0 or t <= 0 then
+			for i = 1, #p do
+			bMsg("THE INNOCENT WIN!", 6, p[i], "Green")	
+			--playSound("All", "Win")
+			end
+		playSound("All", "Win")	
+		roundResults("Innocent", 3*startingPlayers)		
+		elseif pa == 0 and ma == 0 then
+			for i = 1, #p do
+			bMsg("EVERYONE DIED, NO ONE WINS!", 6, p[i])
+			--playSound("All", "Draw")	
+			end
+		playSound("All", "Draw")	
+		end	
+	elseif mode == "Juggernaut" then
+	local noHiding = true	
+	local t = timer
+	for x = 1, 1 do
+	ran = math.random(1, #players)	
+		for i = 1, 1 do
+			if players[ran] ~= nil  and players[ran].Character ~= nil then
+			bMsg("You are a MURDERER", 5, players[ran], "Red")
+			playSound(players[ran].Name, "Murderer")
+			local role = Instance.new("StringValue")
+			role.Name = "Role"
+			role.Parent = players[ran].Character
+			role.Value = "Murderer"	
+			local murderer = players[ran]	
+				if players[ran].Character:findFirstChild("Health") then
+				players[ran].Character:findFirstChild("Health"):Destroy()
+				end
+			players[ran].Character.Humanoid.MaxHealth = 1500
+			players[ran].Character.Humanoid.Health = 1500
+			players[ran].HealthDisplayDistance = 1000
+				coroutine.resume(coroutine.create(function()	
+					for x = 10, 1, -1 do
+					wait(1)
+						if murderer then
+						pMsg("You will recieve your knife in " .. x .. " seconds.", 1, murderer, "Red")
+							if x == 1 then
+							pMsg("You will recieve your knife in " .. x .. " second.", 1, murderer, "Red")	
+							end
+						end
+					end
+					wait(1)
+					if murderer and murderer.Character then
+						if murderer.Character:findFirstChild("Role") then
+							if murderer.Character:findFirstChild("Role").Value == "Murderer" then
+							game.ServerStorage.Tools.Knife:clone().Parent = murderer.Backpack	
+							--makeReaper(murderer)
+							end	
+						end
+					end
+				end))
+			table.remove(players, ran)
+			end
+		end	
+	end
+	for i = 1, #players do
+		if players[i] ~= nil  and players[i].Character ~= nil then
+		bMsg("You are a SHERIFF", 5, players[i], "Orange")
+		playSound(players[i].Name, "Sheriff")
+		local role = Instance.new("StringValue")
+		role.Name = "Role"
+		role.Parent = players[i].Character
+		role.Value = "Sheriff"	
+		local murderer = players[i]	
+			local h = murderer.Character:findFirstChild("Humanoid")
+			if h then
+				h.Died:connect(function()
+				t = t + killTime
+				end)
+			end				
+			coroutine.resume(coroutine.create(function()	
+				for x = 10, 1, -1 do
+				wait(1)
+					if murderer then
+					pMsg("You will recieve your gun in " .. x .. " seconds.", 1, murderer, "Orange")
+						if x == 1 then
+						pMsg("You will recieve your gun in " .. x .. " second.", 1, murderer, "Orange")	
+						end
+					end
+				end
+				wait(1)	
+				if murderer ~= nil then	
+					if murderer.Character then
+						if murderer.Character:findFirstChild("Role") then
+						game.ServerStorage.Tools.Gun:clone().Parent = murderer.Backpack	
+						end
+					end
+				end
+			end))
+		end
+	end	
+	wait(10)			
+	repeat 
+	wait(1)	
+		if t >= timer then
+		t = timer	
+		end
+		if noHiding and getAlivePlayers() <= 2 then
+		noHiding = false	
+		msg(getAlivePlayers() .. " Innocent are remaining. Locations have been revealed.", 5, true)	
+		local players = game.Players:GetChildren()
+			for i = 1, #players do
+				if players[i] ~= nil then
+					if players[i].Character ~= nil then
+						if players[i].Character:findFirstChild("Role") then
+							if players[i].Character:findFirstChild("Humanoid") then
+							players[i].Character:findFirstChild("Humanoid").NameOcclusion = "NoOcclusion"	
+							end	
+						end
+					end	
+				end
+			end				
+		end
+	updateTime(t)			
+	t = t - 1
+	checkPlayersInLobby()
+	pa = getAlivePlayers()
+	ma = getAliveMurderers()
+	until t < 0 or pa == 0 or ma == 0
+	local p = game.Players:GetChildren()
+		if pa == 0 then
+			for i = 1, #p do
+			bMsg("THE MURDERER WINS!", 6, p[i], "Red")
+			--playSound("All", "Lose")	
+			end	
+		playSound("All", "Lose")	
+		roundResults("Murderer", 8*startingPlayers)		
+		elseif ma == 0 or t <= 0 then
+			for i = 1, #p do
+			bMsg("THE INNOCENT WIN!", 6, p[i], "Green")	
+			--playSound("All", "Win")
+			end
+		playSound("All", "Win")	
+		roundResults("Innocent", 3*startingPlayers)		
+		elseif pa == 0 and ma == 0 then
+			for i = 1, #p do
+			bMsg("EVERYONE DIED, NO ONE WINS!", 6, p[i])	
+			--playSound("All", "Draw")
+			end
+		playSound("All", "Draw")	
+		end		
+		if players[ran] ~= nil then
+		players[ran].HealthDisplayDistance = 0
+		end	
+	elseif mode == "Infected" then
+		
+	local function zombify(pl)
+	
+		local TORSO_MESH_ID = "http://www.roblox.com/asset/?id=37683263"
+		local LEFT_ARM_MESH_ID = "http://www.roblox.com/asset/?id=37683097"
+		local RIGHT_ARM_MESH_ID = "http://www.roblox.com/asset/?id=37683174"
+		local LEFT_LEG_MESH_ID = "http://www.roblox.com/asset/?id=37683150"
+		local RIGHT_LEG_MESH_ID = "http://www.roblox.com/asset/?id=37683227"
+		
+		local MESHES = {["Torso"] = 64084303, ["Left Arm"] = 63252751, ["Right Arm"] = 63252810, ["Left Leg"] = 63252779, ["Right Leg"] = 63252837}
+		local TEXTURES = {["Torso"] = 63253121, ["Left Arm"] = 63253121, ["Right Arm"] = 63253121, ["Left Leg"] = 63253121, ["Right Leg"] = 63253121}
+		
+		local function DeleteExistingMeshes(part)
+			for _, v in pairs(part:GetChildren()) do
+				if v:IsA('FileMesh') or v:IsA('CylinderMesh') or v:IsA('BlockMesh') or v:IsA('CharacterMesh') then
+					v:Destroy()
+				end
+			end
+		end
+		
+		local function ParseBodyPartEnum(bodyPartName)
+			local result = Enum.BodyPart.Head
+			if bodyPartName == "Left Arm" then
+				result = Enum.BodyPart.LeftArm
+			elseif bodyPartName == "Right Arm" then
+				result = Enum.BodyPart.RightArm
+			elseif bodyPartName == "Left Leg" then
+				result = Enum.BodyPart.LeftLeg
+			elseif bodyPartName == "Right Leg" then
+				result = Enum.BodyPart.RightLeg
+			elseif bodyPartName == "Torso" then
+				result = Enum.BodyPart.Torso
+			end
+			return result
+		end
+		
+		local function CreateCharacterMesh(meshId, textureId, bodyPartName)
+			local mesh = Instance.new('CharacterMesh')
+			mesh.MeshId = meshId
+			mesh.OverlayTextureId = textureId
+			mesh.BodyPart = ParseBodyPartEnum(bodyPartName)
+			return mesh
+		end
+		
+		local function CreateSpecialMesh(meshId, textureId)
+			if not meshId then return end
+			local mesh = Instance.new('SpecialMesh')
+			mesh.MeshId = "http://www.roblox.com/asset/?id=" .. meshId
+			mesh.TextureId = "http://www.roblox.com/asset/?id=" .. textureId
+			return mesh
+		end
+		
+		local function DressCharacter(character)
+			wait(0.1)
+			if not character then return end
+			if character:FindFirstChild('WasDressedZombieHealer') then print('Already dressed up.') return end
+			local wasDressed = Instance.new('BoolValue')
+			wasDressed.Value = true
+			wasDressed.Name = 'WasDressedZombieHealer'
+			wasDressed.Parent = character
+			character.Head.face.Texture = "http://www.roblox.com/asset/?id=162136868"
+			character["Body Colors"].HeadColor = BrickColor.new("Medium green")
+			character.Humanoid.WalkSpeed = 13
+			DeleteExistingMeshes(character)
+			for partName, meshId in pairs(MESHES) do
+				if character:FindFirstChild(partName) and TEXTURES[partName] then
+					DeleteExistingMeshes(character:FindFirstChild(partName))
+					CreateSpecialMesh(meshId, TEXTURES[partName]).Parent = character:FindFirstChild(partName)
+					CreateCharacterMesh(meshId, TEXTURES[partName], partName).Parent = character
+				end
+			end
+		end
+		DressCharacter(pl)
+	end	
+		
+	local function infectPlr(pl, h)	
+		if h then
+			h.Died:connect(function()
+			local plr = pl
+				coroutine.resume(coroutine.create(function()	
+				wait(5)
+					if workspace:findFirstChild("GameInProgress") ~= nil then
+						if workspace.GameInProgress.Value == true then
+							for x = 1, 10 do
+								wait(0.1)
+								if plr ~= nil then
+								--wait(1)	
+								local spawns = currentMap.Spawns:GetChildren()
+									if plr ~= nil then
+										if plr.Character ~= nil then
+											if plr.Character:findFirstChild("Humanoid") ~= nil then
+												if plr.Character:findFirstChild("Humanoid").Health >= 1 then 
+													if plr.Character:findFirstChild("Torso") ~= nil then
+													plr.Character.Torso.CFrame = spawns[math.random(1, #spawns)].CFrame + Vector3.new(math.random(-5, 5), 3, math.random(-5, 5))
+													game.ServerStorage.Tools.Knife:clone().Parent = plr.Backpack
+													local role = Instance.new("StringValue")
+													role.Name = "Role"
+													role.Parent = plr.Character
+													role.Value = "Murderer"		
+														if plr.Character:findFirstChild("Humanoid") ~= nil then
+															plr.Character.Humanoid.NameOcclusion = "OccludeAll"
+															local ragdoll = script.Raggy:clone()
+															ragdoll.Parent = plr.Character
+															ragdoll.Disabled = false								
+														end		
+																			
+														if plr:findFirstChild("PlayerGui") then
+															if plr.PlayerGui:findFirstChild("GUI") then
+																if plr.PlayerGui.GUI:findFirstChild("Shop") then
+																plr.PlayerGui.GUI:findFirstChild("Shop").Visible = false	
+																end
+																if plr.PlayerGui.GUI:findFirstChild("ShopGUI") then
+																plr.PlayerGui.GUI:findFirstChild("ShopGUI").Visible = false	
+																end					
+																if plr.PlayerGui.GUI:findFirstChild("Spectate") then
+																plr.PlayerGui.GUI:findFirstChild("Spectate").Visible = false	
+																end					
+															end
+														end														
+													zombify(plr.Character)																
+													infectPlr(plr, plr.Character:findFirstChild("Humanoid"))													
+													-- zombify?
+													end
+												end
+											end
+										end
+									end		
+								return								
+								end
+							end
+						end
+					end	
+				end))
+			end)
+		end						
+	end	
+	
+	local noHiding = false	
+	local t = timer
+	for x = 1, 1 do
+	ran = math.random(1, #players)	
+		for i = 1, 1 do
+			if players[ran] ~= nil  and players[ran].Character ~= nil then
+			bMsg("You are INFECTED!", 5, players[ran], "Red")
+			playSound(players[ran].Name, "Murderer")
+			local role = Instance.new("StringValue")
+			role.Name = "Role"
+			role.Parent = players[ran].Character
+			role.Value = "Murderer"	
+			local murderer = players[ran]	
+			local h = murderer.Character:findFirstChild("Humanoid")
+			infectPlr(murderer, h)
+				coroutine.resume(coroutine.create(function()	
+					for x = 10, 1, -1 do
+					wait(1)
+						if murderer then
+						pMsg("You will recieve your knife in " .. x .. " seconds.", 1, murderer, "Red")
+							if x == 1 then
+							pMsg("You will recieve your knife in " .. x .. " second.", 1, murderer, "Red")	
+							end
+						end
+					end
+					wait(1)
+					if murderer and murderer.Character then
+						if murderer.Character:findFirstChild("Role") then
+							if murderer.Character:findFirstChild("Role").Value == "Murderer" then
+							game.ServerStorage.Tools.Knife:clone().Parent = murderer.Backpack	
+							zombify(murderer.Character)	
+							end	
+						end
+					end
+				end))
+			table.remove(players, ran)
+			end
+		end	
+	end
+	for i = 1, #players do
+		if players[i] ~= nil  and players[i].Character ~= nil then
+		bMsg("You are a SURVIVOR", 5, players[i], "Orange")
+		playSound(players[i].Name, "Sheriff")
+		local role = Instance.new("StringValue")
+		role.Name = "Role"
+		role.Parent = players[i].Character
+		role.Value = "Sheriff"	
+		local murderer = players[i]	
+			local h = murderer.Character:findFirstChild("Humanoid")
+			if h then
+				h.Died:connect(function()
+				t = t + 15
+				end)
+			end			
+			infectPlr(murderer, h)	
+			coroutine.resume(coroutine.create(function()	
+				for x = 10, 1, -1 do
+				wait(1)
+					if murderer then
+					pMsg("You will recieve your gun in " .. x .. " seconds.", 1, murderer, "Orange")
+						if x == 1 then
+						pMsg("You will recieve your gun in " .. x .. " second.", 1, murderer, "Orange")	
+						end
+					end
+				end
+				wait(1)	
+				if murderer ~= nil then	
+					if murderer.Character then
+						if murderer.Character:findFirstChild("Role") then
+						game.ServerStorage.Tools.Gun:clone().Parent = murderer.Backpack	
+						end
+					end
+				end
+			end))
+		end
+	end	
+	wait(10)			
+	repeat 
+	wait(1)	
+		if t >= timer then
+		t = timer	
+		end
+		if noHiding and getAlivePlayers() <= 2 then
+		noHiding = false	
+		msg(getAlivePlayers() .. " Innocent are remaining. Locations have been revealed.", 5, true)	
+		local players = game.Players:GetChildren()
+			for i = 1, #players do
+				if players[i] ~= nil then
+					if players[i].Character ~= nil then
+						if players[i].Character:findFirstChild("Role") then
+							if players[i].Character:findFirstChild("Humanoid") then
+							players[i].Character:findFirstChild("Humanoid").NameOcclusion = "NoOcclusion"	
+							end	
+						end
+					end	
+				end
+			end				
+		end
+	updateTime(t)			
+	t = t - 1
+	checkPlayersInLobby()
+	pa = getAlivePlayers()
+	ma = getAliveMurderers()
+	until t < 0 or pa == 0
+	local p = game.Players:GetChildren()
+		if pa == 0 then
+			for i = 1, #p do
+			bMsg("THE INFECTED WIN!", 6, p[i], "Red")
+			--playSound("All", "Lose")	
+			end	
+		playSound("All", "Lose")	
+		roundResults("Murderer", 2*startingPlayers)		
+		elseif ma == 0 or t <= 0 then
+			for i = 1, #p do
+			bMsg("THE SURVIVORS WIN!", 6, p[i], "Green")	
+			--playSound("All", "Win")
+			end
+		playSound("All", "Win")	
+		roundResults("Innocent", 14*startingPlayers)		
+		elseif pa == 0 and ma == 0 then
+			for i = 1, #p do
+			bMsg("EVERYONE DIED, NO ONE WINS!", 6, p[i])	
+			--playSound("All", "Draw")
+			end
+		playSound("All", "Draw")	
+		end			
+	elseif mode == "Sticks and Stones" then
+	local noHiding = true	
+	local t = timer
+	ran = math.random(1, 2)
+	for i = 1, #players do
+	ran = ran + 1
+		if ran > 2 then
+		ran = 1	
+		end
+			if ran == 1 then
+				if players[i] ~= nil  and players[i].Character ~= nil then
+				bMsg("You are a MURDERER", 5, players[i], "Red")
+				playSound(players[i].Name, "Murderer")
+				local role = Instance.new("StringValue")
+				role.Name = "Role"
+				role.Parent = players[i].Character
+				role.Value = "Murderer"	
+				local murderer = players[i]
+				local h = murderer.Character:findFirstChild("Humanoid")
+				if h then
+					h.Died:connect(function()
+					t = t + killTime
+					end)
+				end		
+					coroutine.resume(coroutine.create(function()	
+						for x = 10, 1, -1 do
+						wait(1)
+							if murderer then
+							pMsg("You will recieve your knife in " .. x .. " seconds.", 1, murderer, "Red")
+								if x == 1 then
+								pMsg("You will recieve your knife in " .. x .. " second.", 1, murderer, "Red")	
+								end
+							end
+						end
+						wait(1)
+						if murderer and murderer.Character then
+							if murderer.Character:findFirstChild("Role") then
+								if murderer.Character:findFirstChild("Role").Value == "Murderer" then
+								game.ServerStorage.Tools.Knife:clone().Parent = murderer.Backpack	
+								end	
+							end
+						end
+					end))
+				--table.remove(players, ran)
+				end
+			
+			elseif ran == 2 then
+			if players[i] ~= nil  and players[i].Character ~= nil then
+			bMsg("You are a SHERIFF", 5, players[i], "Orange")
+			playSound(players[i].Name, "Sheriff")
+			local role = Instance.new("StringValue")
+			role.Name = "Role"
+			role.Parent = players[i].Character
+			role.Value = "Sheriff"	
+			local murderer = players[i]	
+				local h = murderer.Character:findFirstChild("Humanoid")
+				if h then
+					h.Died:connect(function()
+					t = t + killTime
+					end)
+				end				
+				coroutine.resume(coroutine.create(function()	
+					for x = 10, 1, -1 do
+					wait(1)
+						if murderer then
+						pMsg("You will recieve your gun in " .. x .. " seconds.", 1, murderer, "Orange")
+							if x == 1 then
+							pMsg("You will recieve your gun in " .. x .. " second.", 1, murderer, "Orange")	
+							end
+						end
+					end
+					wait(1)	
+					if murderer ~= nil then	
+						if murderer.Character then
+							if murderer.Character:findFirstChild("Role") then
+							game.ServerStorage.Tools.Gun:clone().Parent = murderer.Backpack	
+							end
+						end
+					end
+				end))
+			end
+		end								
+
+		
+	end
+	wait(10)			
+	repeat 
+	wait(1)	
+		if t >= timer then
+		t = timer	
+		end
+		if noHiding and getAlivePlayers() <= 3 or noHiding and getAliveMurderers() <= 3 then
+		noHiding = false
+		if getAlivePlayers() <= 3 then	
+		msg(getAlivePlayers() .. " Sheriffs are remaining. Locations have been revealed.", 5, true)	
+		elseif getAliveMurderers() <= 3 then
+		msg(getAliveMurderers() .. " Murderers are remaining. Locations have been revealed.", 5, true)		
+		end	
+		local players = game.Players:GetChildren()
+			for i = 1, #players do
+				if players[i] ~= nil then
+					if players[i].Character ~= nil then
+						if players[i].Character:findFirstChild("Role") then
+							if players[i].Character:findFirstChild("Humanoid") then
+							players[i].Character:findFirstChild("Humanoid").NameOcclusion = "NoOcclusion"	
+							end	
+						end
+					end	
+				end
+			end				
+		end
+	updateTime(t)			
+	t = t - 1
+	checkPlayersInLobby()
+	pa = getAlivePlayers()
+	ma = getAliveMurderers()
+	until t < 0 or pa == 0 or ma == 0
+	local p = game.Players:GetChildren()
+		if pa == 0 then
+			for i = 1, #p do
+			bMsg("THE MURDERERS WIN!", 6, p[i], "Red")
+			--playSound("All", "Lose")	
+			end	
+		playSound("All", "Lose")	
+		roundResults("Murderer", 3*startingPlayers)		
+		elseif ma == 0 or t <= 0 then
+			for i = 1, #p do
+			bMsg("THE SHERIFFS WIN!", 6, p[i], "Orange")	
+			--playSound("All", "Win")
+			end
+		playSound("All", "Win")	
+		roundResults("Innocent", 3*startingPlayers)		
+		elseif pa == 0 and ma == 0 then
+			for i = 1, #p do
+			bMsg("EVERYONE DIED, NO ONE WINS!", 6, p[i])	
+			--playSound("All", "Draw")
+			end
+		playSound("All", "Draw")	
+		elseif t < 0 then
+			for i = 1, #p do
+			bMsg("TIMES UP, NO ONE WINS!", 6, p[i])	
+			--playSound("All", "Draw")
+			end
+		playSound("All", "Draw")		
+		end																					
+	elseif mode == "One In The Chamber"	then
+	local noHiding = true	
+	--local players = game.Players:GetChildren()		
+	t = timer	
+	for i = 1, #players do
+		if players[i] ~= nil  and players[i].Character ~= nil then
+		bMsg("You have one bullet, make it count.", 5, players[i], "Orange")
+		playSound(players[i].Name, "Murderer")
+		local role = Instance.new("StringValue")
+		role.Name = "Role"
+		role.Parent = players[i].Character
+		role.Value = "Murderer"	
+		
+		local rr = Instance.new("BoolValue")
+		rr.Name = "Bullet"
+		rr.Parent = players[i].Character
+		rr.Value = true
+		
+		local murderer = players[i]	
+			local h = murderer.Character:findFirstChild("Humanoid")
+			if h then
+				h.Died:connect(function()
+				t = t + killTime
+				end)
+			end				
+			coroutine.resume(coroutine.create(function()	
+				for x = 10, 1, -1 do
+				wait(1)
+					if murderer ~= nil then
+					pMsg("You will recieve your weapons in " .. x .. " seconds.", 1, murderer, "Orange")
+						if x == 1 then
+						pMsg("You will recieve your weapons in " .. x .. " second.", 1, murderer, "Orange")	
+						end
+					end
+				end	
+				wait(1)	
+				if murderer ~= nil then
+					if murderer.Character ~= nil then
+						if murderer.Character:findFirstChild("Role") then
+						game.ServerStorage.Tools.Knife:clone().Parent = murderer.Backpack	
+						game.ServerStorage.Tools.Gun:clone().Parent = murderer.Backpack	
+						end
+					end
+				end
+			end))
+		end
+	end	
+	wait(10)			
+	repeat 
+	wait(1)	
+		if t >= timer then
+		t = timer	
+		end
+		if noHiding and getAliveMurderers() <= 3 then
+		noHiding = false	
+		msg(getAliveMurderers() .. " Players are remaining. Locations have been revealed.", 5, true)	
+		local players = game.Players:GetChildren()
+			for i = 1, #players do
+				if players[i] ~= nil then
+					if players[i].Character ~= nil then
+						if players[i].Character:findFirstChild("Role") then
+							if players[i].Character:findFirstChild("Humanoid") then
+							players[i].Character:findFirstChild("Humanoid").NameOcclusion = "NoOcclusion"	
+							end	
+						end
+					end	
+				end
+			end				
+		end
+	updateTime(t)
+	t = t - 1
+	checkPlayersInLobby()
+	ma = getAliveMurderers()
+	until t < 0 or ma == 0 or ma == 1
+	winner = nil
+	local p = game.Players:GetChildren()
+		if ma == 1 then
+			local pp = game.Players:GetChildren()
+			for x = 1, #pp do
+				if pp[x] ~= nil then
+					if pp[x].Character ~= nil then
+						if pp[x].Character:findFirstChild("Role") then
+						winner = pp[x]	
+						end
+					end
+				end
+			end
+			for i = 1, #p do
+				if winner then
+				--print("TheMadEgg awarded")	
+				--game:GetService("BadgeService"):AwardBadge(winner.userId, 227454028)	
+				--game:GetService("ReplicatedStorage"):WaitForChild("BadgeManagementHandler"):Invoke("AwardBadge", {Player = winner, BadgeId = 227454028})
+						
+				bMsg(string.upper(winner.Name) .. " IS THE WINNER!", 6, p[i], "Red")
+				--playSound("All", "Win")
+				end	
+			end	
+			playSound("All", "Win")
+			roundResults(winner, 8*startingPlayers)	
+		elseif t <= 0 then
+			for i = 1, #p do
+			bMsg("TIMES UP! NO ONE WINS!", 6, p[i])
+			--playSound("All", "Lose")	
+			end				
+		playSound("All", "Lose")		
+		elseif ma == 0 then
+			for i = 1, #p do
+			bMsg("EVERYONE DIED, NO ONE WINS!", 6, p[i])
+			--playSound("All", "Draw")	
+			end
+		playSound("All", "Draw")	
+		end				
+	end
+	workspace.GameInProgress.Mode.Value = ""
+	workspace.GameInProgress.Value = false
+	local players = game.Players:GetChildren()	
+	for i = 1, #players do
+		if players[i] ~= nil then
+			if players[i].Character ~= nil then
+				if players[i].Character:findFirstChild("Role") then
+					if players[i].Character:findFirstChild("Torso") then
+						if players[i].PlayerGui ~= nil then
+							if players[i].PlayerGui:findFirstChild("Sounds") then
+								if players[i].PlayerGui.Sounds:findFirstChild("Music") then
+								players[i].PlayerGui.Sounds:findFirstChild("Music"):Stop()	
+								end
+							end
+						end
+						if players[i].Character.Torso:findFirstChild("Music") then
+						players[i].Character.Torso:findFirstChild("Music"):Stop()		
+						end
+					end	
+				end
+			end	
+		end
+	end			
+	wait(3)
+	for i = 1, #players do
+		if players[i] ~= nil then
+			if players[i].Character ~= nil then
+				if players[i].Character:findFirstChild("Role") then
+				players[i].Character:BreakJoints()
+				end
+			end	
+		end
+	end	
+	wait()	
+	local c = workspace:GetChildren()
+	for i = 1, #c do
+		if c[i] ~= nil then
+			if c[i]:findFirstChild("Cleaner") then
+			c[i].Parent = nil	
+			end
+		end
+	end	
+	wait()
+	local c = workspace:GetChildren()
+	for i = 1, #c do
+		if c[i] ~= nil then
+			if c[i].Name == "" then
+			c[i].Parent = nil	
+			end
+		end
+	end			
+end
+
+function checkPlayers()
+	if game.Players.NumPlayers >= playersNeeded then
+		return true
+	else
+		return false	
+	end
+end
+
+local specRound = 0
+local ran = 0
+
+while true do
+	wait()
+	if checkPlayers() then
+	msg("Starting a new game...", 3, false)
+		if specRound == 0 then
+		ran = ran + 1
+			if ran > #maps then
+			ran = 1	
+			end			
+		end		
+	specRound = specRound + 1
+		if specRound >= 4 then -- 4
+		specRound = 0	
+		ran2 = math.random(2, #modes)
+		local p = game.Players:GetChildren()
+			for i = 1, #p do
+				if modes[ran2] == "Freezing Reaping" or modes[ran2] == "The Reaper" then
+				bMsg("SPOOKY ROUND", 5, p[i], "Red")
+				stopAllSound()	
+				playSound("All", "SpookyRound")
+				else
+				bMsg("SPECIAL ROUND", 5, p[i], "Red")		
+				end
+			--playSound("All", "Lose")	
+			end	
+		msg(modes[ran2] .. "; " .. help[ran2], 5, false)
+		else
+		ran2 = 1
+		end
+	msg("Map chosen: " .. maps[ran].Name .. " created by " .. maps[ran].Creator.Value, 5, false)	
+		if currentMap ~= nil then
+			if currentMap.Name ~= maps[ran].Name then
+			currentMap.Parent = nil	
+			map = loadMap(maps[ran])
+			currentMap = map	
+			end
+		else
+		map = loadMap(maps[ran])
+		currentMap = map					
+		end
+	msg("GET READY!", 5, false)
+	if checkPlayers() then
+		if specRound == 0 then
+		playSound("All", "Round")
+		wait(4)			
+		end
+		--if modes[ran2] == "Infected" then
+		--game.Lighting.TimeOfDay = "7:00:00"
+		--game.Lighting.FogEnd = "60"								
+		--end					
+	start(modes[ran2])
+	end
+	updateTime("")
+	local players = game.Players:GetChildren()
+	for i = 1, #players do
+		if players[i] ~= nil then
+			if players[i].PlayerGui then
+				if players[i].PlayerGui:findFirstChild("GUI") then
+					if players[i].PlayerGui.GUI:findFirstChild("Spectating") then
+					players[i].PlayerGui.GUI:findFirstChild("Spectating").Visible = false	
+					end	
+				end
+			end
+		end
+	end	
+		if workspace:findFirstChild("Gun") then
+		workspace:findFirstChild("Gun").Parent = nil	
+		end	
+	wait()
+		if workspace:findFirstChild("Gun") then
+		workspace:findFirstChild("Gun").Parent = nil	
+		end		
+	--game.Lighting.TimeOfDay = "16:00:00"
+	--game.Lighting.FogEnd = "6000"											
+	wait(6)					
+	msg("Intermission...", 5, false)
+	else
+	msg(playersNeeded .. " players are needed to start a game, invite your friends!", 5)		
+	end
+end
