@@ -10,7 +10,7 @@ local maps = game.ServerStorage.Maps:GetChildren()
 local currentMap = nil
 
 local PointsService = Game:GetService("PointsService")
-local freeRadio = {"tails807", "sonic231", "DarkEtherz", "Superluigi101CP", "Oaktin", "CanadianMurderer, osuka"} 
+local freeRadio = {"tails807", "sonic231", "DarkEtherz", "Superluigi101CP", "Oaktin", "CanadianMurderer, osuka, Musertz"} 
 
 function makeReaper(player)
 	if player ~= nil then
